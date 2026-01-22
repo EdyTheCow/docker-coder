@@ -1,0 +1,40 @@
+services:
+  traefik:
+    image: traefik:v3
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - coder-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./acme.json:/acme.json
+    command:
+      # Global
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      # Logging
+      - --log.level=INFO
+      # EntryPoints
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # Docker provider
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Certificate Resolvers - Cloudflare DNS challenge
+      - --certificatesresolvers.cloudflare.acme.email=${TRAEFIK_EMAIL}
+      - --certificatesresolvers.cloudflare.acme.storage=/acme.json
+      - --certificatesresolvers.cloudflare.acme.dnschallenge=true
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
+      # Certificate Resolvers - Let's Encrypt HTTP challenge
+      - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+
+networks:
+  coder-network:
+    external: true
