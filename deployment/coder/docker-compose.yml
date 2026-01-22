@@ -1,14 +1,15 @@
 services:
+
   coder:
     image: ${CODER_REPO:-ghcr.io/coder/coder}:${CODER_VERSION:-latest}
+    restart: unless-stopped
     networks:
       - coder-network
       - local
     environment:
-      CODER_LOG_FILTER: ".*"
-      CODER_PG_CONNECTION_URL: "postgresql://${POSTGRES_USER:-username}:${POSTGRES_PASSWORD:-password}@database/${POSTGRES_DB:-coder}?sslmode=disable"
+      CODER_PG_CONNECTION_URL: "postgresql://${POSTGRES_USER:-coder}:${POSTGRES_PASSWORD:-password}@database/${POSTGRES_DB:-coder}?sslmode=disable"
       CODER_HTTP_ADDRESS: "0.0.0.0:7080"
-      CODER_TLS_ENABLE: true
+      CODER_TLS_ENABLE: false
       CODER_ACCESS_URL: "https://${DOMAIN}"
       CODER_WILDCARD_ACCESS_URL: "*.${DOMAIN}"
     group_add:
@@ -37,23 +38,25 @@ services:
 
   database:
     image: "postgres:17"
+    restart: unless-stopped
     networks:
       - local
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-username} # The PostgreSQL user (useful to connect to the database)
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password} # The PostgreSQL password (useful to connect to the database)
-      POSTGRES_DB: ${POSTGRES_DB:-coder} # The PostgreSQL default database (automatically created at first launch)
+      POSTGRES_USER: ${POSTGRES_USER:-coder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-coder}
     volumes:
       - coder_data:/var/lib/postgresql/data # Use "docker volume rm coder_coder_data" to reset Coder
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-username} -d ${POSTGRES_DB:-coder}",
+          "pg_isready -U ${POSTGRES_USER:-coder} -d ${POSTGRES_DB:-coder}",
         ]
       interval: 5s
       timeout: 5s
       retries: 5
+
 volumes:
   coder_data:
   coder_home:
