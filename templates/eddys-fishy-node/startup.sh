@@ -52,6 +52,15 @@ EOF
 %{ if install_terraform ~}
 bash "$TOOLS_DIR/terraform.sh"
 %{ endif ~}
+%{ if install_ansible ~}
+bash "$TOOLS_DIR/ansible.sh"
+%{ endif ~}
+%{ if install_python ~}
+bash "$TOOLS_DIR/python.sh"
+%{ endif ~}
+%{ if install_opencode ~}
+bash "$TOOLS_DIR/opencode.sh"
+%{ endif ~}
 
 # Configure MCP servers
 if command -v claude >/dev/null 2>&1; then

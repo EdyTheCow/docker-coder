@@ -8,6 +8,7 @@ USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates git unzip tmux ripgrep sudo vim openssh-client \
     wget jq htop tree build-essential gnupg lsb-release xz-utils \
+    python3 python3-pip python3-venv pipx \
   && rm -rf /var/lib/apt/lists/* \
   && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
 

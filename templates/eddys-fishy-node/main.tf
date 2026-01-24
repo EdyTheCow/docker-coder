@@ -30,6 +30,24 @@ data "coder_parameter" "tools" {
     value = "terraform"
     icon  = "https://cdn.simpleicons.org/terraform"
   }
+
+  option {
+    name  = "Ansible"
+    value = "ansible"
+    icon  = "https://cdn.simpleicons.org/ansible"
+  }
+
+  option {
+    name  = "Python"
+    value = "python"
+    icon  = "https://cdn.simpleicons.org/python"
+  }
+
+  option {
+    name  = "OpenCode"
+    value = "opencode"
+    icon  = "https://cdn.simpleicons.org/gnometerminal/white"
+  }
 }
 
 locals {
@@ -45,6 +63,9 @@ locals {
   # Parse selected tools from multi-select parameter
   selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
   install_terraform = contains(local.selected_tools, "terraform")
+  install_ansible   = contains(local.selected_tools, "ansible")
+  install_python    = contains(local.selected_tools, "python")
+  install_opencode  = contains(local.selected_tools, "opencode")
 }
 
 resource "coder_agent" "main" {
@@ -55,6 +76,9 @@ resource "coder_agent" "main" {
   startup_script_behavior = "blocking"
   startup_script = templatefile("${path.module}/startup.sh", {
     install_terraform = local.install_terraform
+    install_ansible   = local.install_ansible
+    install_python    = local.install_python
+    install_opencode  = local.install_opencode
   })
 
   metadata {
@@ -103,6 +127,28 @@ resource "coder_agent" "main" {
       display_name = "Terraform"
       key          = "5_terraform_version"
       script       = "terraform version -json | jq -r '.terraform_version'"
+      interval     = 120
+      timeout      = 5
+    }
+  }
+
+  dynamic "metadata" {
+    for_each = local.install_ansible ? [1] : []
+    content {
+      display_name = "Ansible"
+      key          = "6_ansible_version"
+      script       = "ansible --version | head -1 | awk '{print $NF}' | tr -d '[]'"
+      interval     = 120
+      timeout      = 5
+    }
+  }
+
+  dynamic "metadata" {
+    for_each = local.install_python ? [1] : []
+    content {
+      display_name = "Python"
+      key          = "7_python_version"
+      script       = "python3 --version | awk '{print $2}'"
       interval     = 120
       timeout      = 5
     }
@@ -172,9 +218,9 @@ module "code-server" {
       "bradlc.vscode-tailwindcss",
       "dbaeumer.vscode-eslint",
     ],
-    local.install_terraform ? [
-      "hashicorp.terraform",
-    ] : []
+    local.install_terraform ? ["hashicorp.terraform"] : [],
+    local.install_ansible ? ["redhat.ansible"] : [],
+    local.install_python ? ["ms-python.python"] : []
   )
 
   settings = {
