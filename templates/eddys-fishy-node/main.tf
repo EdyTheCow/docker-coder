@@ -16,13 +16,20 @@ data "coder_provisioner" "me" {}
 data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
 
-data "coder_parameter" "install_terraform" {
-  name         = "install_terraform"
-  display_name = "Terraform"
-  description  = "Install Terraform CLI"
-  type         = "bool"
-  default      = "false"
+data "coder_parameter" "tools" {
+  name         = "tools"
+  display_name = "Development Tools"
+  description  = "Select additional tools to install"
+  type         = "list(string)"
+  form_type    = "multi-select"
   mutable      = false
+  default      = jsonencode([])
+
+  option {
+    name  = "Terraform"
+    value = "terraform"
+    icon  = "https://cdn.simpleicons.org/terraform"
+  }
 }
 
 locals {
@@ -34,6 +41,10 @@ locals {
   image_tag        = "eddys-fishy-node:latest"
   container_name   = "coder-${local.owner_safe}-${local.workspace_safe}"
   home_volume_name = "${local.container_name}-home"
+
+  # Parse selected tools from multi-select parameter
+  selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
+  install_terraform = contains(local.selected_tools, "terraform")
 }
 
 resource "coder_agent" "main" {
@@ -43,7 +54,7 @@ resource "coder_agent" "main" {
 
   startup_script_behavior = "blocking"
   startup_script = templatefile("${path.module}/startup.sh", {
-    install_terraform = data.coder_parameter.install_terraform.value == "true"
+    install_terraform = local.install_terraform
   })
 
   metadata {
@@ -87,7 +98,7 @@ resource "coder_agent" "main" {
   }
 
   dynamic "metadata" {
-    for_each = data.coder_parameter.install_terraform.value == "true" ? [1] : []
+    for_each = local.install_terraform ? [1] : []
     content {
       display_name = "Terraform"
       key          = "5_terraform_version"
@@ -161,7 +172,7 @@ module "code-server" {
       "bradlc.vscode-tailwindcss",
       "dbaeumer.vscode-eslint",
     ],
-    data.coder_parameter.install_terraform.value == "true" ? [
+    local.install_terraform ? [
       "hashicorp.terraform",
     ] : []
   )
@@ -176,15 +187,15 @@ module "code-server" {
     "workbench.startupEditor"                  = "none"
 
     # Disable AI/Copilot features
-    "chat.disableAIFeatures"                       = true
-    "chat.agent.enabled"                           = false
-    "chat.commandCenter.enabled"                   = false
-    "github.copilot.enable"                        = { "*" = false }
-    "github.copilot.editor.enableCodeActions"      = false
-    "github.copilot.nextEditSuggestions.enabled"   = false
-    "github.copilot.chat.codesearch.enabled"       = false
-    "inlineChat.accessibleDiffView"                = "off"
-    "terminal.integrated.initialHint"              = false
+    "chat.disableAIFeatures"                     = true
+    "chat.agent.enabled"                         = false
+    "chat.commandCenter.enabled"                 = false
+    "github.copilot.enable"                      = { "*" = false }
+    "github.copilot.editor.enableCodeActions"    = false
+    "github.copilot.nextEditSuggestions.enabled" = false
+    "github.copilot.chat.codesearch.enabled"     = false
+    "inlineChat.accessibleDiffView"              = "off"
+    "terminal.integrated.initialHint"            = false
   }
 
   use_cached_extensions = true
