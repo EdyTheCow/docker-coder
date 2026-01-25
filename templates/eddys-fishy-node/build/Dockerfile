@@ -35,7 +35,4 @@ WORKDIR /home/coder
 # Bun
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Claude Code CLI
-RUN curl -fsSL https://claude.ai/install.sh | bash
-
 ENV PATH="/home/coder/.bun/bin:/home/coder/.local/bin:${PATH}"

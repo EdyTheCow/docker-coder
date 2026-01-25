@@ -26,6 +26,12 @@ data "coder_parameter" "tools" {
   default      = jsonencode([])
 
   option {
+    name  = "Claude Code"
+    value = "claudecode"
+    icon  = "https://cdn.simpleicons.org/claude"
+  }
+
+  option {
     name  = "Terraform"
     value = "terraform"
     icon  = "https://cdn.simpleicons.org/terraform"
@@ -61,11 +67,12 @@ locals {
   home_volume_name = "${local.container_name}-home"
 
   # Parse selected tools from multi-select parameter
-  selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
-  install_terraform = contains(local.selected_tools, "terraform")
-  install_ansible   = contains(local.selected_tools, "ansible")
-  install_python    = contains(local.selected_tools, "python")
-  install_opencode  = contains(local.selected_tools, "opencode")
+  selected_tools     = try(jsondecode(data.coder_parameter.tools.value), [])
+  install_claudecode = contains(local.selected_tools, "claudecode")
+  install_terraform  = contains(local.selected_tools, "terraform")
+  install_ansible    = contains(local.selected_tools, "ansible")
+  install_python     = contains(local.selected_tools, "python")
+  install_opencode   = contains(local.selected_tools, "opencode")
 }
 
 resource "coder_agent" "main" {

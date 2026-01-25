@@ -7,11 +7,11 @@ A Coder workspace template with Fish shell, Node.js, and optional development to
 - Fish shell 4.3.3 with Tide prompt (via Fisher)
 - Node.js 24, Bun, pnpm, yarn, tsx
 - Python 3, pipx
-- Claude Code CLI with MCP servers (Desktop Commander, Playwright)
 - Git, tmux, vim, ripgrep, jq, htop
 
 ## Optional Tools (Multi-Select)
 
+- **Claude Code** - Claude Code CLI with MCP servers (Desktop Commander, Playwright)
 - **Terraform** - Terraform CLI with fish aliases
 - **Ansible** - Ansible via pipx with fish aliases
 - **Python** - Poetry, ruff, black, mypy via pipx
@@ -30,6 +30,7 @@ eddys-fishy-node/
     │   └── tide_variables
     └── tools/
         ├── ansible.sh
+        ├── claudecode.sh
         ├── opencode.sh
         ├── python.sh
         └── terraform.sh

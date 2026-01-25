@@ -36,33 +36,12 @@ and fisher install nickeb96/puffer-fish
 # Apply Tide configuration
 cat "$CONFIG_DIR/tide_variables" >> "$HOME/.config/fish/fish_variables"
 
-# Configure Claude settings
-mkdir -p "$HOME/.claude"
-cat > "$HOME/.claude/settings.json" << 'EOF'
-{
-  "permissions": {
-    "allow": ["*"],
-    "deny": []
-  },
-  "autoApprove": ["Bash(*)", "Read(*)", "Write(*)", "Edit(*)", "MultiEdit(*)"]
-}
-EOF
-
 # Install selected tools
 %{ for tool in selected_tools ~}
 if [ -f "$TOOLS_DIR/${tool}.sh" ]; then
   bash "$TOOLS_DIR/${tool}.sh"
 fi
 %{ endfor ~}
-
-# Configure MCP servers
-if command -v claude >/dev/null 2>&1; then
-  claude mcp add --transport stdio --scope user desktop-commander -- \
-    bunx --yes @wonderwhy-er/desktop-commander@latest || true
-
-  claude mcp add --transport stdio --scope user playwright -- \
-    bunx --yes @playwright/mcp@latest --headless --isolated --no-sandbox || true
-fi
 
 # Mark as initialized
 touch "$MARKER_FILE"
