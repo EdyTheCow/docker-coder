@@ -49,18 +49,11 @@ cat > "$HOME/.claude/settings.json" << 'EOF'
 EOF
 
 # Install selected tools
-%{ if install_terraform ~}
-bash "$TOOLS_DIR/terraform.sh"
-%{ endif ~}
-%{ if install_ansible ~}
-bash "$TOOLS_DIR/ansible.sh"
-%{ endif ~}
-%{ if install_python ~}
-bash "$TOOLS_DIR/python.sh"
-%{ endif ~}
-%{ if install_opencode ~}
-bash "$TOOLS_DIR/opencode.sh"
-%{ endif ~}
+%{ for tool in selected_tools ~}
+if [ -f "$TOOLS_DIR/${tool}.sh" ]; then
+  bash "$TOOLS_DIR/${tool}.sh"
+fi
+%{ endfor ~}
 
 # Configure MCP servers
 if command -v claude >/dev/null 2>&1; then

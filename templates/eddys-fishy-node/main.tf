@@ -75,10 +75,7 @@ resource "coder_agent" "main" {
 
   startup_script_behavior = "blocking"
   startup_script = templatefile("${path.module}/startup.sh", {
-    install_terraform = local.install_terraform
-    install_ansible   = local.install_ansible
-    install_python    = local.install_python
-    install_opencode  = local.install_opencode
+    selected_tools = local.selected_tools
   })
 
   metadata {

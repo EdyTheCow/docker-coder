@@ -37,8 +37,13 @@ eddys-fishy-node/
 
 ## Adding a New Tool
 
+**Minimal (2 steps):**
+
 1. Create `build/tools/newtool.sh` with installation commands
 2. Add an `option` block to the `tools` parameter in `main.tf`
+
+**Optional extras:**
+
 3. Add `install_newtool = contains(local.selected_tools, "newtool")` to locals
-4. Add the template variable and install block to `startup.sh`
-5. Add any VS Code extensions and metadata in `main.tf`
+4. Add a dynamic `metadata` block to show version in workspace dashboard
+5. Add VS Code extension to the `extensions` list in code-server module

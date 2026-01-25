@@ -19,4 +19,3 @@ alias venv "python3 -m venv"
 EOF
 
 echo "Python development environment setup complete!"
-olive-reindeer-38
