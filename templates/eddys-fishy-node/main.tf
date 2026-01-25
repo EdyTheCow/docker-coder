@@ -246,3 +246,11 @@ module "code-server" {
 
   use_cached_extensions = true
 }
+
+module "git-config" {
+  source                = "registry.coder.com/coder/git-config/coder"
+  version               = "1.0.32"
+  agent_id              = coder_agent.main.id
+  allow_username_change = true
+  allow_email_change    = true
+}
