@@ -1,6 +1,6 @@
-# Eddy's Fishy Node
+# Eddy's Fishplate
 
-A Coder workspace template with Fish shell, Node.js, and optional development tools.
+A Coder workspace template with Fish shell, Node.js, Python and optional development tools.
 
 ## Base Tools (Always Included)
 

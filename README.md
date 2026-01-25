@@ -107,7 +107,7 @@ Navigate to `deploy/coder/.env` and set these variables:
 | POSTGRES_PASSWORD | -                 | Generate a strong password       |
 
 <b>Start docker compose</b><br />
-Inside of `deploy/coder/` run the command below. This will start Coder and Postgres DB.
+Inside of `deploy/coder/` run the command below. This will start Coder and PostgreSQL DB.
 
 ```
 docker-compose up -d
@@ -119,5 +119,5 @@ The first time you navigate there, you should be asked to create your first admi
 
 # 📝 Templates
 
-Coder offers a bunch of pre-made templates you can use. This repository includes my personal template `Eddy's Fishy Node` which I use for work.
-Template includes Fish shell, NodeJs and Claude Code with some personal configs. Feel free to use it however you see fit or create your own.
+Coder offers a bunch of pre-made templates you can use. This repository includes my personal template `Eddy's Fishplate` which I use for work and personal projects.
+Template includes Fish shell, NodeJS, Python and optional dev tools. Feel free to use it however you see fit or create your own.

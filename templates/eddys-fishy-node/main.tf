@@ -56,7 +56,7 @@ locals {
   owner_safe     = lower(replace(data.coder_workspace_owner.me.name, "/[^a-z0-9_.-]/", "-"))
   workspace_safe = lower(replace(data.coder_workspace.me.name, "/[^a-z0-9_.-]/", "-"))
 
-  image_tag        = "eddys-fishy-node:latest"
+  image_tag        = "eddys-fishplate:latest"
   container_name   = "coder-${local.owner_safe}-${local.workspace_safe}"
   home_volume_name = "${local.container_name}-home"
 
