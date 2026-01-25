@@ -44,12 +44,6 @@ data "coder_parameter" "tools" {
   }
 
   option {
-    name  = "Python"
-    value = "python"
-    icon  = "https://cdn.simpleicons.org/python"
-  }
-
-  option {
     name  = "OpenCode"
     value = "opencode"
     icon  = "https://cdn.simpleicons.org/gnometerminal/white"
@@ -67,12 +61,9 @@ locals {
   home_volume_name = "${local.container_name}-home"
 
   # Parse selected tools from multi-select parameter
-  selected_tools     = try(jsondecode(data.coder_parameter.tools.value), [])
-  install_claudecode = contains(local.selected_tools, "claudecode")
-  install_terraform  = contains(local.selected_tools, "terraform")
-  install_ansible    = contains(local.selected_tools, "ansible")
-  install_python     = contains(local.selected_tools, "python")
-  install_opencode   = contains(local.selected_tools, "opencode")
+  selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
+  install_terraform = contains(local.selected_tools, "terraform")
+  install_ansible   = contains(local.selected_tools, "ansible")
 }
 
 resource "coder_agent" "main" {
@@ -125,12 +116,20 @@ resource "coder_agent" "main" {
     timeout      = 5
   }
 
+  metadata {
+    display_name = "Python"
+    key          = "5_python_version"
+    script       = "python3 --version | awk '{print $2}'"
+    interval     = 120
+    timeout      = 5
+  }
+
   dynamic "metadata" {
     for_each = local.install_terraform ? [1] : []
     content {
       display_name = "Terraform"
-      key          = "5_terraform_version"
-      script       = "terraform version -json | jq -r '.terraform_version'"
+      key          = "6_terraform_version"
+      script       = "command -v terraform >/dev/null && terraform version -json | jq -r '.terraform_version' || echo 'Installing...'"
       interval     = 120
       timeout      = 5
     }
@@ -140,19 +139,8 @@ resource "coder_agent" "main" {
     for_each = local.install_ansible ? [1] : []
     content {
       display_name = "Ansible"
-      key          = "6_ansible_version"
-      script       = "ansible --version | head -1 | awk '{print $NF}' | tr -d '[]'"
-      interval     = 120
-      timeout      = 5
-    }
-  }
-
-  dynamic "metadata" {
-    for_each = local.install_python ? [1] : []
-    content {
-      display_name = "Python"
-      key          = "7_python_version"
-      script       = "python3 --version | awk '{print $2}'"
+      key          = "7_ansible_version"
+      script       = "command -v ansible >/dev/null && ansible --version | head -1 | awk '{print $NF}' | tr -d '[]' || echo 'Installing...'"
       interval     = 120
       timeout      = 5
     }
@@ -223,8 +211,7 @@ module "code-server" {
       "dbaeumer.vscode-eslint",
     ],
     local.install_terraform ? ["hashicorp.terraform"] : [],
-    local.install_ansible ? ["redhat.ansible"] : [],
-    local.install_python ? ["ms-python.python"] : []
+    local.install_ansible ? ["redhat.ansible"] : []
   )
 
   settings = {
