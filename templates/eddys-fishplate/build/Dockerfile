@@ -8,9 +8,18 @@ USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates git unzip tmux ripgrep sudo vim openssh-client \
     wget jq htop tree gnupg lsb-release xz-utils \
-    python3 python3-pip python3-venv pipx \
+    python3 python3-pip python3-venv pipx build-essential \
   && rm -rf /var/lib/apt/lists/* \
   && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
+
+# GitHub CLI (gh) — installed by default from GitHub's official apt repo
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list \
+  && apt-get update && apt-get install -y --no-install-recommends gh \
+  && rm -rf /var/lib/apt/lists/*
 
 # Fish shell (pre-built from GitHub)
 RUN curl -fLo /tmp/fish.tar.xz https://github.com/fish-shell/fish-shell/releases/download/4.3.3/fish-4.3.3-linux-x86_64.tar.xz \
@@ -23,6 +32,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
   && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g pnpm yarn tsx
+
+# T3 Code (pinned) — minimal web GUI for coding agents (Codex/Claude/Cursor/OpenCode).
+# Native dep node-pty compiles using build-essential + python3 from the base layer above.
+RUN npm install -g t3@0.0.25
 
 # Copy tool installation scripts and config
 COPY tools/ /opt/coder/tools/

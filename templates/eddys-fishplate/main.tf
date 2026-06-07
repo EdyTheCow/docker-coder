@@ -48,6 +48,23 @@ data "coder_parameter" "tools" {
     value = "opencode"
     icon  = "https://cdn.simpleicons.org/gnometerminal/white"
   }
+
+  option {
+    name  = "Codex"
+    value = "codex"
+    icon  = "https://cdn.simpleicons.org/openai/white"
+  }
+}
+
+data "coder_parameter" "t3code" {
+  name         = "t3code"
+  display_name = "T3 Code"
+  description  = "Run the T3 Code web GUI (Codex/Claude/Cursor/OpenCode) as a workspace app, gated by Coder auth"
+  type         = "bool"
+  form_type    = "switch"
+  mutable      = true
+  default      = true
+  icon         = "https://github.com/pingdotgg.png"
 }
 
 locals {
@@ -64,12 +81,16 @@ locals {
   selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
   install_terraform = contains(local.selected_tools, "terraform")
   install_ansible   = contains(local.selected_tools, "ansible")
+
+  # T3 Code: bound to loopback and exposed via a Coder subdomain app.
+  # Loopback bind => server auth policy "loopback-browser" (pair once, persisted under ~/.t3).
+  enable_t3code = tobool(data.coder_parameter.t3code.value)
+  t3code_port   = 3773
 }
 
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
-  dir  = "/home/${local.username}/projects"
 
   startup_script_behavior = "blocking"
   startup_script = templatefile("${path.module}/startup.sh", {
@@ -141,6 +162,17 @@ resource "coder_agent" "main" {
       display_name = "Ansible"
       key          = "7_ansible_version"
       script       = "command -v ansible >/dev/null && ansible --version | head -1 | awk '{print $NF}' | tr -d '[]' || echo 'Installing...'"
+      interval     = 120
+      timeout      = 5
+    }
+  }
+
+  dynamic "metadata" {
+    for_each = local.enable_t3code ? [1] : []
+    content {
+      display_name = "T3 Code"
+      key          = "8_t3code_version"
+      script       = "cat \"$(npm root -g)/t3/package.json\" 2>/dev/null | jq -r .version || echo 'n/a'"
       interval     = 120
       timeout      = 5
     }
@@ -244,4 +276,71 @@ module "git-config" {
   agent_id              = coder_agent.main.id
   allow_username_change = true
   allow_email_change    = true
+}
+
+# Launch the T3 Code server on every workspace start (it is a long-running daemon,
+# so it lives here rather than in the one-shot, marker-gated startup.sh).
+resource "coder_script" "t3code" {
+  count              = local.enable_t3code ? 1 : 0
+  agent_id           = coder_agent.main.id
+  display_name       = "T3 Code server"
+  icon               = "https://github.com/pingdotgg.png"
+  run_on_start       = true
+  start_blocks_login = false
+  script             = <<-EOT
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PORT=${local.t3code_port}
+    mkdir -p "$HOME/projects"
+
+    # Idempotent: a restart-on-start re-runs this; skip if already listening.
+    if curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then
+      echo "T3 Code already running on port $PORT"
+      exit 0
+    fi
+
+    echo "Starting T3 Code on 127.0.0.1:$PORT ..."
+    nohup t3 serve --host 127.0.0.1 --port "$PORT" --no-browser "$HOME/projects" \
+      >"$HOME/.t3-serve.log" 2>&1 &
+
+    for i in $(seq 1 30); do
+      if curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then
+        echo "T3 Code is up."
+        break
+      fi
+      sleep 1
+    done
+
+    # The token `t3 serve` prints is single-use and expires in 5 minutes, so it is
+    # almost always dead by the time you open the app. Mint a fresh, longer-lived
+    # token on each cold start instead. It is still single-use, but once you pair,
+    # the browser session cookie persists on the home volume, so you rarely re-pair.
+    echo "==================== T3 Code pairing ===================="
+    if t3 auth pairing create --ttl 24h --label coder; then
+      echo "Paste the 12-char Token shown above into the T3 Code pairing screen."
+      echo "(To re-issue later: t3 auth pairing create --ttl 1h)"
+    else
+      echo "Auto-issue failed; run manually:  t3 auth pairing create --ttl 1h"
+    fi
+    echo "========================================================="
+  EOT
+}
+
+# Expose T3 Code as a Coder subdomain app — TLS, the wildcard host, and SSO are
+# all provided by Coder, so nothing is bound to a public interface.
+resource "coder_app" "t3code" {
+  count        = local.enable_t3code ? 1 : 0
+  agent_id     = coder_agent.main.id
+  slug         = "t3code"
+  display_name = "T3 Code"
+  icon         = "https://github.com/pingdotgg.png"
+  url          = "http://127.0.0.1:${local.t3code_port}"
+  subdomain    = true
+  share        = "owner"
+
+  healthcheck {
+    url       = "http://127.0.0.1:${local.t3code_port}/"
+    interval  = 5
+    threshold = 6
+  }
 }
