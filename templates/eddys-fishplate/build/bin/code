@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# `code` shim for Coder workspaces running code-server.
+#
+# T3 Code's "Open in editor" (and any `code <path>` / `code --goto file:line`)
+# spawns the `code` command on the workspace host. There is no native `code`
+# binary here, so this shim routes the call to the code-server instance already
+# running in the browser, via its bundled remote CLI + IPC socket. The file or
+# folder then opens in the code-server tab.
+set -euo pipefail
+
+log() { printf 'code: %s\n' "$*" >&2; }
+
+# 1) Locate code-server's remote CLI. Prefer the one belonging to the code-server
+#    on PATH (matches the running server); fall back to the Coder code-server
+#    module's default install prefix (/tmp/code-server), newest install first.
+remote_cli=""
+if command -v code-server >/dev/null 2>&1; then
+  base="$(dirname "$(dirname "$(readlink -f "$(command -v code-server)")")")"
+  cand="$base/lib/vscode/bin/remote-cli/code-server"
+  [ -x "$cand" ] && remote_cli="$cand"
+fi
+if [ -z "$remote_cli" ]; then
+  cand="$(ls -dt /tmp/code-server/lib/code-server-*/lib/vscode/bin/remote-cli/code-server 2>/dev/null | head -1)"
+  [ -n "$cand" ] && [ -x "$cand" ] && remote_cli="$cand"
+fi
+if [ -z "$remote_cli" ]; then
+  log "code-server remote CLI not found; is code-server installed?"
+  exit 127
+fi
+
+# 2) Find a live IPC socket (a running code-server window). If we were launched
+#    from code-server's own terminal, VSCODE_IPC_HOOK_CLI is already set and points
+#    at the right window — honour it. Otherwise (e.g. spawned by t3) discover one,
+#    probing newest-first with the read-only --status to skip stale sockets.
+probe() { timeout 5 env VSCODE_IPC_HOOK_CLI="$1" "$remote_cli" --status >/dev/null 2>&1; }
+sock=""
+if [ -n "${VSCODE_IPC_HOOK_CLI:-}" ] && probe "$VSCODE_IPC_HOOK_CLI"; then
+  sock="$VSCODE_IPC_HOOK_CLI"
+else
+  for s in $(ls -t /tmp/vscode-ipc-*.sock 2>/dev/null); do
+    if probe "$s"; then
+      sock="$s"
+      break
+    fi
+  done
+fi
+if [ -z "$sock" ]; then
+  log "no running code-server window found; open code-server in your browser first"
+  exit 1
+fi
+
+# 3) Hand off to the real CLI bound to that window.
+exec env VSCODE_IPC_HOOK_CLI="$sock" "$remote_cli" "$@"

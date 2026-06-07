@@ -42,6 +42,11 @@ COPY tools/ /opt/coder/tools/
 COPY config/ /opt/coder/config/
 RUN chmod +x /opt/coder/tools/*.sh
 
+# `code` shim: lets T3 Code's "Open in editor" (and `code <path>`) open files in
+# the code-server tab running in the browser. Harmless if code-server is absent.
+COPY bin/code /usr/local/bin/code
+RUN chmod +x /usr/local/bin/code
+
 USER coder
 WORKDIR /home/coder
 
