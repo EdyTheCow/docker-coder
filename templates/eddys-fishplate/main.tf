@@ -86,6 +86,13 @@ locals {
   # Loopback bind => server auth policy "loopback-browser" (pair once, persisted under ~/.t3).
   enable_t3code = tobool(data.coder_parameter.t3code.value)
   t3code_port   = 3773
+
+  # Public URL of the T3 Code subdomain app, used to build a one-click /pair#token= link.
+  # Coder serves subdomain apps at "{slug}--{agent}--{workspace}--{owner}.{wildcard-host}",
+  # where the wildcard host is the access URL host (CODER_WILDCARD_ACCESS_URL = "*.DOMAIN").
+  # "main" is the coder_agent resource label, which Coder uses as the agent name.
+  t3code_app_host = replace(replace(data.coder_workspace.me.access_url, "https://", ""), "http://", "")
+  t3code_app_url  = "https://t3code--main--${data.coder_workspace.me.name}--${data.coder_workspace_owner.me.name}.${local.t3code_app_host}"
 }
 
 resource "coder_agent" "main" {
@@ -313,14 +320,24 @@ resource "coder_script" "t3code" {
 
     # The token `t3 serve` prints is single-use and expires in 5 minutes, so it is
     # almost always dead by the time you open the app. Mint a fresh, longer-lived
-    # token on each cold start instead. It is still single-use, but once you pair,
-    # the browser session cookie persists on the home volume, so you rarely re-pair.
+    # token on each cold start instead. Passing --base-url makes t3 print a ready
+    # "/pair#token=..." link: one click redeems the token and sets the t3_session
+    # cookie (httpOnly, 30-day TTL), so you only do this once per browser per month.
+    BASE_URL="${local.t3code_app_url}"
     echo "==================== T3 Code pairing ===================="
-    if t3 auth pairing create --ttl 24h --label coder; then
-      echo "Paste the 12-char Token shown above into the T3 Code pairing screen."
-      echo "(To re-issue later: t3 auth pairing create --ttl 1h)"
+    if PAIR_OUT="$(t3 auth pairing create --ttl 24h --label coder --base-url "$BASE_URL" 2>&1)"; then
+      echo "$PAIR_OUT"
+      PAIR_URL="$(printf '%s\n' "$PAIR_OUT" | grep -oE 'https?://[^[:space:]]+/pair#token=[^[:space:]]+' | head -1 || true)"
+      echo ""
+      if [ -n "$PAIR_URL" ]; then
+        echo ">> One-click pair (valid 24h, single use):"
+        echo ">>   $PAIR_URL"
+      else
+        echo "Paste the 12-char Token shown above into the T3 Code pairing screen."
+      fi
+      echo "(To re-issue later: t3 auth pairing create --ttl 1h --base-url \"$BASE_URL\")"
     else
-      echo "Auto-issue failed; run manually:  t3 auth pairing create --ttl 1h"
+      echo "Auto-issue failed; run manually:  t3 auth pairing create --ttl 1h --base-url \"$BASE_URL\""
     fi
     echo "========================================================="
   EOT
