@@ -37,7 +37,12 @@ sock=""
 if [ -n "${VSCODE_IPC_HOOK_CLI:-}" ] && probe "$VSCODE_IPC_HOOK_CLI"; then
   sock="$VSCODE_IPC_HOOK_CLI"
 else
-  for s in $(ls -t /tmp/vscode-ipc-*.sock 2>/dev/null); do
+  # VS Code writes these under XDG_RUNTIME_DIR/TMPDIR when set, else /tmp. Search
+  # all candidates newest-first; a live window answers --status, stale files don't.
+  for s in $(ls -t \
+      ${XDG_RUNTIME_DIR:+"$XDG_RUNTIME_DIR"/vscode-ipc-*.sock} \
+      ${TMPDIR:+"$TMPDIR"/vscode-ipc-*.sock} \
+      /tmp/vscode-ipc-*.sock 2>/dev/null | awk '!seen[$0]++'); do
     if probe "$s"; then
       sock="$s"
       break
@@ -49,5 +54,22 @@ if [ -z "$sock" ]; then
   exit 1
 fi
 
-# 3) Hand off to the real CLI bound to that window.
+# 3) Default to reusing the current code-server window instead of spawning yet
+#    another browser tab — t3's "Open" passes a folder/--goto with no window mode,
+#    and reusing the open tab is the friendlier behaviour. Skip the override when
+#    the caller already chose a window mode or this is an informational command.
+reuse=1
+for arg in "$@"; do
+  case "$arg" in
+    -r|--reuse-window|-n|--new-window|-h|--help|--version|--status|-d|--diff|-m|--merge)
+      reuse=0
+      break
+      ;;
+  esac
+done
+
+# 4) Hand off to the real CLI bound to that window.
+if [ "$reuse" -eq 1 ]; then
+  exec env VSCODE_IPC_HOOK_CLI="$sock" "$remote_cli" --reuse-window "$@"
+fi
 exec env VSCODE_IPC_HOOK_CLI="$sock" "$remote_cli" "$@"
