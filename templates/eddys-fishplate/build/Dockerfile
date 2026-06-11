@@ -56,4 +56,8 @@ RUN curl -fsSL https://bun.sh/install | bash
 # Python dev tools
 RUN pipx install poetry && pipx install ruff && pipx install black && pipx install mypy
 
-ENV PATH="/home/coder/.bun/bin:/home/coder/.local/bin:${PATH}"
+# Put per-user tool dirs on PATH for non-interactive processes too (the t3 daemon
+# is launched via a coder_script and never sources fish config). OpenCode installs
+# to ~/.opencode/bin and is otherwise only added to PATH via fish config, so t3's
+# `opencode` provider detection fails without this. (.local/bin covers Claude/Codex/Cursor.)
+ENV PATH="/home/coder/.opencode/bin:/home/coder/.bun/bin:/home/coder/.local/bin:${PATH}"

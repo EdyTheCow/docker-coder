@@ -16,31 +16,20 @@ data "coder_provisioner" "me" {}
 data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
 
-data "coder_parameter" "tools" {
-  name         = "tools"
-  display_name = "Development Tools"
-  description  = "Select additional tools to install"
+data "coder_parameter" "ai_tools" {
+  name         = "ai_tools"
+  display_name = "AI Tools"
+  description  = "Select AI coding CLIs to install (T3 Code integrates with these)"
   type         = "list(string)"
   form_type    = "multi-select"
   mutable      = false
   default      = jsonencode([])
+  order        = 1
 
   option {
     name  = "Claude Code"
     value = "claudecode"
     icon  = "https://cdn.simpleicons.org/claude"
-  }
-
-  option {
-    name  = "Terraform"
-    value = "terraform"
-    icon  = "https://cdn.simpleicons.org/terraform"
-  }
-
-  option {
-    name  = "Ansible"
-    value = "ansible"
-    icon  = "https://cdn.simpleicons.org/ansible"
   }
 
   option {
@@ -54,6 +43,35 @@ data "coder_parameter" "tools" {
     value = "codex"
     icon  = "https://cdn.simpleicons.org/openai/white"
   }
+
+  option {
+    name  = "Cursor"
+    value = "cursor"
+    icon  = "https://github.com/getcursor.png"
+  }
+}
+
+data "coder_parameter" "tools" {
+  name         = "tools"
+  display_name = "Development Tools"
+  description  = "Select additional tools to install"
+  type         = "list(string)"
+  form_type    = "multi-select"
+  mutable      = false
+  default      = jsonencode([])
+  order        = 2
+
+  option {
+    name  = "Terraform"
+    value = "terraform"
+    icon  = "https://cdn.simpleicons.org/terraform"
+  }
+
+  option {
+    name  = "Ansible"
+    value = "ansible"
+    icon  = "https://cdn.simpleicons.org/ansible"
+  }
 }
 
 data "coder_parameter" "t3code" {
@@ -65,6 +83,7 @@ data "coder_parameter" "t3code" {
   mutable      = true
   default      = true
   icon         = "https://github.com/pingdotgg.png"
+  order        = 3
 }
 
 locals {
@@ -77,10 +96,15 @@ locals {
   container_name   = "coder-${local.owner_safe}-${local.workspace_safe}"
   home_volume_name = "${local.container_name}-home"
 
-  # Parse selected tools from multi-select parameter
-  selected_tools    = try(jsondecode(data.coder_parameter.tools.value), [])
-  install_terraform = contains(local.selected_tools, "terraform")
-  install_ansible   = contains(local.selected_tools, "ansible")
+  # Parse selected tools from the two multi-select parameters. They are merged into
+  # one list so startup.sh just runs "<tool>.sh" for each (the script names match
+  # the option values), and the install_* flags below don't care which dropdown a
+  # tool came from.
+  selected_ai_tools  = try(jsondecode(data.coder_parameter.ai_tools.value), [])
+  selected_dev_tools = try(jsondecode(data.coder_parameter.tools.value), [])
+  selected_tools     = concat(local.selected_ai_tools, local.selected_dev_tools)
+  install_terraform  = contains(local.selected_tools, "terraform")
+  install_ansible    = contains(local.selected_tools, "ansible")
 
   # T3 Code: bound to loopback and exposed via a Coder subdomain app.
   # Loopback bind => server auth policy "loopback-browser" (pair once, persisted under ~/.t3).
