@@ -61,3 +61,11 @@ RUN pipx install poetry && pipx install ruff && pipx install black && pipx insta
 # to ~/.opencode/bin and is otherwise only added to PATH via fish config, so t3's
 # `opencode` provider detection fails without this. (.local/bin covers Claude/Codex/Cursor.)
 ENV PATH="/home/coder/.opencode/bin:/home/coder/.bun/bin:/home/coder/.local/bin:${PATH}"
+
+# Point npm's global prefix at a user-writable, on-PATH dir. The default prefix is
+# /usr (root-owned), so `npm install -g <pkg>` as `coder` fails with EACCES (exit
+# 243) — which is exactly what T3 Code's provider auto-update does for npm-managed
+# CLIs (e.g. Codex: `npm install -g @openai/codex@latest`). With this, those updates
+# land in ~/.local/bin and succeed without sudo. Set after the root-level `npm i -g`
+# installs above so t3/pnpm/yarn stay in the system prefix.
+ENV NPM_CONFIG_PREFIX="/home/coder/.local"

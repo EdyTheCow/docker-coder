@@ -24,28 +24,28 @@ data "coder_parameter" "ai_tools" {
   form_type    = "multi-select"
   mutable      = false
   default      = jsonencode([])
-  order        = 1
+  order        = 2
 
   option {
-    name  = "Claude Code"
+    name  = "Claude Code CLI"
     value = "claudecode"
     icon  = "https://cdn.simpleicons.org/claude"
   }
 
   option {
-    name  = "OpenCode"
+    name  = "OpenCode CLI"
     value = "opencode"
     icon  = "https://cdn.simpleicons.org/gnometerminal/white"
   }
 
   option {
-    name  = "Codex"
+    name  = "Codex CLI"
     value = "codex"
     icon  = "https://cdn.simpleicons.org/openai/white"
   }
 
   option {
-    name  = "Cursor"
+    name  = "Cursor CLI"
     value = "cursor"
     icon  = "https://github.com/getcursor.png"
   }
@@ -59,7 +59,7 @@ data "coder_parameter" "tools" {
   form_type    = "multi-select"
   mutable      = false
   default      = jsonencode([])
-  order        = 2
+  order        = 3
 
   option {
     name  = "Terraform"
@@ -83,7 +83,7 @@ data "coder_parameter" "t3code" {
   mutable      = true
   default      = true
   icon         = "https://github.com/pingdotgg.png"
-  order        = 3
+  order        = 1
 }
 
 locals {
@@ -203,7 +203,7 @@ resource "coder_agent" "main" {
     content {
       display_name = "T3 Code"
       key          = "8_t3code_version"
-      script       = "cat \"$(npm root -g)/t3/package.json\" 2>/dev/null | jq -r .version || echo 'n/a'"
+      script       = "t3 --version 2>/dev/null | sed 's/^t3 v//' || echo 'n/a'"
       interval     = 120
       timeout      = 5
     }
@@ -307,6 +307,10 @@ module "git-config" {
   agent_id              = coder_agent.main.id
   allow_username_change = true
   allow_email_change    = true
+  # Push the git username/email fields to the bottom of the form. The module
+  # places username at this order and email at order+1, so they land after the
+  # t3 toggle (1), AI Tools (2) and Development Tools (3) parameters above.
+  coder_parameter_order = 4
 }
 
 # Launch the T3 Code server on every workspace start (it is a long-running daemon,

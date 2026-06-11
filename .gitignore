@@ -1,0 +1,3 @@
+# crash core dumps (e.g. from a segfaulting process)
+/core
+core.[0-9]*
