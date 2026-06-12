@@ -4,8 +4,13 @@ set -euo pipefail
 
 echo "Installing Claude Code CLI..."
 
-# Install Claude Code
-curl -fsSL https://claude.ai/install.sh | bash
+# Install via npm (not the native installer) so the install method matches how
+# T3 Code updates it: t3 runs `npm install -g @anthropic-ai/claude-code@latest`.
+# The native installer puts a non-npm symlink at ~/.local/bin/claude, which makes
+# that update fail with EEXIST. npm-managed install lets t3's update overwrite its
+# own link cleanly. (NPM_CONFIG_PREFIX=~/.local from the Dockerfile keeps it on PATH
+# and avoids the root-owned global prefix / EACCES.)
+npm install -g @anthropic-ai/claude-code@latest
 
 # Configure Claude settings
 mkdir -p "$HOME/.claude"
